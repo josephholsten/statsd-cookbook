@@ -19,30 +19,18 @@
 
 include_recipe "build-essential"
 include_recipe "git"
-
-package "nodejs"
+include_recipe "nodejs"
 
 execute "checkout statsd" do
   command "git clone git://github.com/etsy/statsd"
-  creates "/tmp/statsd"
-  cwd "/tmp"
+  creates "/usr/local/statsd"
+  cwd "/usr/local"
 end
 
-package "debhelper"
+directory "/etc/statsd"
 
-execute "build debian package" do
-  command "dpkg-buildpackage -us -uc"
-  creates "/tmp/statsd_0.0.3_all.deb"
-  cwd "/tmp/statsd"
-end
-
-dpkg_package "statsd" do
-  action :install
-  source "/tmp/statsd_0.0.3_all.deb"
-end
-
-template "/etc/statsd/rdioConfig.js" do
-  source "rdioConfig.js.erb"
+template "/etc/statsd/config.js" do
+  source "config.js.erb"
   mode 0644
   variables(
     :port => node[:statsd][:port],
@@ -53,8 +41,8 @@ template "/etc/statsd/rdioConfig.js" do
   notifies :restart, "service[statsd]"
 end
 
-cookbook_file "/usr/share/statsd/scripts/start" do
-  source "upstart.start"
+cookbook_file "/usr/local/sbin/statsd" do
+  source "statsd"
   mode 0755
 end
 
@@ -70,5 +58,6 @@ user "statsd" do
 end
 
 service "statsd" do
+  provider Chef::Provider::Service::Upstart
   action [ :enable, :start ]
 end
